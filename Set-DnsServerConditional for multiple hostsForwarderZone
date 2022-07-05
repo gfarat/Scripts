@@ -1,0 +1,4 @@
+$Hostnames = Get-content "C:\Temp\hostnames.txt"
+foreach ($Hostname in $Hostnames){ 
+Set-DnsServerConditionalForwarderZone -ComputerName $Hostname -Name "contoso.com" -MasterServers "192.168.0.1", "192.168.0.2"
+}
