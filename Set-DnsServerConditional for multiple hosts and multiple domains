@@ -1,0 +1,7 @@
+$Hostnames = Get-content "C:\Temp\hostnames.txt"
+$Zones = Get-Content "C:\Temp\zones.txt"
+foreach ($Hostname in $Hostnames){ 
+foreach ($zone in $zones){
+    add-DnsServerConditionalForwarderZone -ComputerName $Hostname -Name $zone -MasterServers "168.63.129.16"
+    }
+}
