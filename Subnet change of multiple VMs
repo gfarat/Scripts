@@ -1,0 +1,19 @@
+Connect-AzAccount -TenantId "ID"
+Set-AzContext -Subscription "NAME"
+
+# Get network interfaces
+$nicnames = Get-Content "C:\temp\nics.txt"
+foreach ($nicname in $nicnames){
+$nic = Get-AzNetworkInterface -Name "$nicname"}
+
+# Get virtual network
+$vnet = Get-AzVirtualNetwork -Name "vnet-avd-eastus"
+
+# Get a subnet from vnet
+$subnet = Get-AzVirtualNetworkSubnetConfig -Name "snet-avd2" -VirtualNetwork $vnet
+
+# Change subnet of network interface 
+$nic.IpConfigurations[0].Subnet.Id = $subnet.Id
+
+# Write back to Azure 
+$nic | Set-AzNetworkInterface
