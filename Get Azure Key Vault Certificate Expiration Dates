@@ -1,0 +1,29 @@
+#!/bin/bash
+
+KEYVAULTS=$(az keyvault list --query "[].name" -o tsv)
+# KEYVAULTS="<space_delimited_list_of_vault_names>"
+
+for KEYVAULT in $KEYVAULTS; do
+    for CERT in $(az keyvault certificate list \
+            --vault-name "$KEYVAULT" \
+            --query "[].name" -o tsv); do
+        EXPIRES=$(az keyvault certificate show \
+            --vault-name "$KEYVAULT" \
+            --name "$CERT" \
+            --query "attributes.expires" -o tsv)
+        PYCMD=$(cat <<EOF
+from datetime import datetime
+from dateutil import parser
+from dateutil.tz import tzutc
+expire_days = (parser.parse('$EXPIRES') - datetime.utcnow().replace(tzinfo=tzutc())).days
+if expire_days > 0:
+    msg = "in {} days".format(expire_days)
+else:
+    msg = "already expired!!!"
+print(msg)
+EOF
+        )
+        EXPIRES_DELTA=$(python3 -c "$PYCMD")
+        echo "$CERT (Vault: $KEYVAULT) expires on $EXPIRES ($EXPIRES_DELTA)"
+    done
+done
