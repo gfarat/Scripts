@@ -1,0 +1,10 @@
+#Insatalar pacote de idioma. Este cmdlet baixará e instalará os componentes de idioma disponíveis para o idioma especificado.
+Install-Language pt-BR
+
+#Definir as Configurações do Sistema e do Dispositivo Padrão (Idioma de Exibição do Windows, formatos regionais e de localidade) para o idioma instalado. 
+
+Install-Language pt-BR -CopyToSettings
+
+#Reiniciar o dispositivo
+
+Shutdown -r -f
