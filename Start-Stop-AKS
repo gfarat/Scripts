@@ -1,0 +1,24 @@
+Param
+(
+    [Parameter (Mandatory= $True)]
+    [String]$AKSResourceGroup,
+    [Parameter (Mandatory= $True)]
+    [String]$AKSName,
+    [Parameter (Mandatory= $True)]
+    [String]$SubscriptionID,
+    [Parameter (Mandatory= $True,HelpMessage="start or stop")]
+    [String]$Action
+)
+
+Connect-AzAccount -Identity
+Set-AzContext -SubscriptionID $SubscriptionID
+
+if ($Action -eq "start"){
+    Get-AzAksCluster -Name $AKSName -ResourceGroupName $AKSResourceGroup
+    ####################################################################
+    Start-AzAksCluster -Name $AKSName -ResourceGroupName $AKSResourceGroup
+}
+elseif($Action -eq "stop"){
+    Get-AzAksCluster -Name $AKSName -ResourceGroupName $AKSResourceGroup
+    ####################################################################
+    Stop-AzAksCluster -Name $AKSName -ResourceGroupName $AKSResourceGroup}
