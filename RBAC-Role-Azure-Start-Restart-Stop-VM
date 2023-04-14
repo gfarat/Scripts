@@ -1,6 +1,6 @@
 {
     "properties": {
-        "roleName": "Start-Stop-VM",
+        "roleName": "Start-Stop-VM-Role",
         "description": "",
         "assignableScopes": [
             "/subscriptions/"
