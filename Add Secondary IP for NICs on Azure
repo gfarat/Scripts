@@ -1,0 +1,29 @@
+# Get Network Interfaces Information
+
+Get-AzNetworkInterface | Format-Table Name, ResourceGroupName, Location
+
+# Variables for common values
+
+$NicName  = "vxlan-onprem402-nic02"
+$RgName   = "rg-vxlan"
+$Location = "eastus"
+$ipName = "ipconfig-192.168.3.235"
+$ipAddress = "192.168.3.235"
+$NIC = Get-AzNetworkInterface -Name $NicName -ResourceGroupName $RgName
+$NIC.IpConfigurations
+
+# Add IP Configuration
+
+Add-AzNetworkInterfaceIpConfig `
+-Name $ipName `
+-NetworkInterface $NIC `
+-Subnet $Subnet `
+-PrivateIpAddress $ipAddress `
+
+# Save IP Configuration
+
+Set-AzNetworkInterface -NetworkInterface $NIC
+
+#Get NIC IP Configuration properties
+
+$NIC.IpConfigurations | Format-Table Name, PrivateIPAddress, Primary
