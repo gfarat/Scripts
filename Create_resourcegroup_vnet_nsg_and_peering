@@ -23,6 +23,8 @@ $vnet1 = New-AzVirtualNetwork -Name $vnetName1 -ResourceGroupName $rgName1 -Loca
 $networkSecurityGroup = New-AzNetworkSecurityGroup -ResourceGroupName $rgName1 -Location $location -Name $nsgName1
 Add-AzVirtualNetworkSubnetConfig -Name $snetName1 -VirtualNetwork $vnet1 -AddressPrefix $Prefix1 -NetworkSecurityGroupId $networkSecurityGroup.Id
 $vnet1 | Set-AzVirtualNetwork
+
+# Create Peering
 Add-AzVirtualNetworkPeering -Name $peerSpokeName1 -VirtualNetwork $vnet1 -RemoteVirtualNetworkId $RemoteVirtualNetworkId -AllowForwardedTraffic -UseRemoteGateways
 Set-AzContext -subscriptionID $SubscriptionHub
 $vnetHub = Get-AzVirtualNetwork -name $vnetHubName -ResourceGroupName $ResourceGroupHubName
