@@ -1,0 +1,29 @@
+# Variables for common values
+$subscriptionName1='MCT'
+$rgName1='rg-sample-prd-brs-001'
+$vnetName1='vnet-sample-prd-brs-001'
+$snetName1='snet-sample-prd-brs-001'
+$nsgName1='nsg-sample-prd-brs-001'
+$peerSpokeName1='peer-vnet-sample-prd-brs-001-to-vnet-sharedservices-eastus'
+$peerHubName1='peer-vnet-sharedservices-eastus-to-vnet-sample-prd-brs-001'
+$Prefix1='10.120.0.0/24'
+$SubscriptionHub='1c73878c-8483-42fe-a8b7-7d4f90de491e'
+$vnetHubName='vnet-sharedservices-eastus'
+$ResourceGroupHubName='rg-sharedservices-eastus'
+$RemoteVirtualNetworkId='/subscriptions/1c73878c-8483-42fe-a8b7-7d4f90de491e/resourceGroups/rg-sharedservices-eastus/providers/Microsoft.Network/virtualNetworks/vnet-sharedservices-eastus'
+$location='brazilsouth'
+
+#Select Subscription and Create Resource Group
+Set-AzContext -subscription $subscriptionName1
+New-AzResourceGroup -Name $rgName1 -Location $location
+
+#Create Virtual Network, Subnet and NSG
+$snet1 = New-AzVirtualNetworkSubnetConfig -name $snetName1 -AddressPrefix $Prefix1
+$vnet1 = New-AzVirtualNetwork -Name $vnetName1 -ResourceGroupName $rgName1 -Location $location -AddressPrefix $Prefix1
+$networkSecurityGroup = New-AzNetworkSecurityGroup -ResourceGroupName $rgName1 -Location $location -Name $nsgName1
+Add-AzVirtualNetworkSubnetConfig -Name $snetName1 -VirtualNetwork $vnet1 -AddressPrefix $Prefix1 -NetworkSecurityGroupId $networkSecurityGroup.Id
+$vnet1 | Set-AzVirtualNetwork
+Add-AzVirtualNetworkPeering -Name $peerSpokeName1 -VirtualNetwork $vnet1 -RemoteVirtualNetworkId $RemoteVirtualNetworkId -AllowForwardedTraffic -UseRemoteGateways
+Set-AzContext -subscriptionID $SubscriptionHub
+$vnetHub = Get-AzVirtualNetwork -name $vnetHubName -ResourceGroupName $ResourceGroupHubName
+Add-AzVirtualNetworkPeering -Name $peerHubName1 -VirtualNetwork $vnetHub -RemoteVirtualNetworkId $vnet1.Id -AllowForwardedTraffic -AllowGatewayTransit
