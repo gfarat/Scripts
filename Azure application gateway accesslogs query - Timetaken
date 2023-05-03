@@ -1,0 +1,4 @@
+AzureDiagnostics
+| where Category == 'ApplicationGatewayAccessLog' and TimeGenerated > ago(3d)
+| summarize RequestCount = count(), AvgTimeTaken = avg(timeTaken_d), percentiles(timeTaken_d, 50, 75, 95, 99) by backendPoolName_s, requestUri_s, httpMethod_s
+| order by AvgTimeTaken desc
