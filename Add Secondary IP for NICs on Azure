@@ -1,29 +1,30 @@
-# Get Network Interfaces Information
+Param(
+    [Parameter(Mandatory = $true)]
+    [string]$VmName,
 
+    [Parameter(Mandatory = $true)]
+    [string]$IpAddress,
+	
+	[Parameter(Mandatory = $true)]
+    [string]$RgName,
+	
+	[Parameter(Mandatory = $true)]
+    [string]$Location
+)
+
+# Get Network Interfaces Information
 Get-AzNetworkInterface | Format-Table Name, ResourceGroupName, Location
 
 # Variables for common values
-
-$NicName  = "vxlan-onprem402-nic02"
-$RgName   = "rg-vxlan"
-$Location = "eastus"
-$ipName = "ipconfig-192.168.3.235"
-$ipAddress = "192.168.3.235"
-$NIC = Get-AzNetworkInterface -Name $NicName -ResourceGroupName $RgName
-$NIC.IpConfigurations
-
-# Add IP Configuration
-
-Add-AzNetworkInterfaceIpConfig `
--Name $ipName `
--NetworkInterface $NIC `
--Subnet $Subnet `
--PrivateIpAddress $ipAddress `
-
-# Save IP Configuration
-
+$ipName = "ipconfig-$ipAddress"
+$vm = Get-AzVM -Name $vmName -ResourceGroupName $RgName
+$nicName = $vm.NetworkProfile.NetworkInterfaces[1].Id.Split("/")[-1]
+$NIC = Get-AzNetworkInterface -Name $NicName
+$VnetName = $((($NIC.IpConfigurations.subnet.id).Split('/'))[-3])
+$vnet = Get-AzVirtualNetwork -Name $VnetName -ResourceGroupName $rgName
+$SubnetName = ((($NIC.IpConfigurations.subnet.id).Split('/'))[-1])
+$Subnet = Get-AzVirtualNetworkSubnetConfig -Name $SubnetName -VirtualNetwork $vnet
+$NIC = Get-AzNetworkInterface -Name $NicName
+Add-AzNetworkInterfaceIpConfig -Name $ipName -NetworkInterface $NIC -Subnet $Subnet -PrivateIpAddress $ipAddress
 Set-AzNetworkInterface -NetworkInterface $NIC
-
-#Get NIC IP Configuration properties
-
 $NIC.IpConfigurations | Format-Table Name, PrivateIPAddress, Primary
