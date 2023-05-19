@@ -1,0 +1,1 @@
+ Set-AzVMExtension -ResourceGroupName "rg-sharedservices-eastus" -Location "eastus" -VMName "vm-dc01" -Name "AzureNetworkWatcherExtension" -Publisher "Microsoft.Azure.NetworkWatcher" -Type "NetworkWatcherAgentWindows" -ForceRerun "True"
