@@ -1,0 +1,124 @@
+Param(
+[Parameter(Mandatory = $true)]
+[string]$ComputerId,
+[Parameter(Mandatory = $true)]
+[string]$Location,
+[Parameter(Mandatory = $true)]
+[string[]]$IpAddressesToRemoveAdd
+)
+
+$computador1 = "VMAZUVXLAN$ComputerId" # Substitua pelo nome do primeiro computador
+$computador2 = "AZUVXLANVL$ComputerId" # Substitua pelo nome do segundo computador
+
+$IpAddress = (Resolve-DnsName -Name $computador1 -Type A -ErrorAction SilentlyContinue).IPAddress
+$IpAddress1 = (Resolve-DnsName -Name $computador2 -Type A -ErrorAction SilentlyContinue).IPAddress
+
+Write-Host "Endereço IP do Computador 1 ($computador1): $IpAddress"
+Write-Host "Endereço IP do Computador 2 ($computador2): $IpAddress1"
+
+# Verificar se a resolução de nomes falhou
+if (-not $IpAddress -or -not $IpAddress1) {
+Write-Host "Falha na resolução de nomes. Encerrando o script."
+return
+}
+
+$computadores = $IpAddress, $IpAddress1 # Substitua pelos endereços IP ou nomes das suas máquinas remotas
+$credenciais = @()
+
+# Crie as credenciais para cada máquina remota
+$senhaMaquina1 = ConvertTo-SecureString -String "(+)Password" -AsPlainText -Force # Substitua pela senha da máquina 1
+$credencialMaquina1 = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList "Domain\Username", $senhaMaquina1
+
+$senhaMaquina2 = ConvertTo-SecureString -String "(+)Password" -AsPlainText -Force # Substitua pela senha da máquina 2
+$credencialMaquina2 = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList "Username", $senhaMaquina2
+
+# Criar uma sessão PSSession para cada máquina remota
+$sessoes = @()
+foreach ($computador in $computadores) {
+if ($computador -eq $IpAddress) {
+Write-Host "Conectando na máquina $computador"
+$sessao = New-PSSession -ComputerName $computador -Credential $credencialMaquina2 #azure
+}
+elseif ($computador -eq $IpAddress1) {
+Write-Host "Conectando na máquina $computador"
+$sessao = New-PSSession -ComputerName $computador -Credential $credencialMaquina1 #banco
+}
+$sessoes += $sessao
+}
+
+$remoteFilePathmodulo = "C:\ExtendedNetwork.psm1"
+
+# Defina o bloco de script a ser executado remotamente
+$comandoRemoto = {
+Param(
+[string]$ComputerId,
+[string]$Location,
+[string[]]$IpAddressesToRemoveAdd
+)
+
+Write-host "Máquina: $env:COMPUTERNAME" # Nome da máquina remota
+Import-module $using:remoteFilePathmodulo
+# Executar os comandos desejados
+foreach ($ip in $using:IpAddressesToRemoveAdd) {
+if (Get-ExtendedNetworkIPAddresses | Where-Object { $_.IPAddress -eq $ip }) {
+Remove-ExtendedNetworkIPAddress -IPAddress $ip
+}
+if (-not (Get-ExtendedNetworkIPAddresses | Where-Object { $_.IPAddress -eq $ip })) {
+if (($Location -eq "remote" -and $env:COMPUTERNAME -eq $using:computador1) -or ($Location -eq "local" -and $env:COMPUTERNAME -eq $using:computador2)) {
+Add-ExtendedNetworkIPAddress -IPAddress $ip -Location "local"
+} elseif (($Location -eq "local" -and $env:COMPUTERNAME -eq $using:computador1) -or ($Location -eq "remote" -and $env:COMPUTERNAME -eq $using:computador2)) {
+Add-ExtendedNetworkIPAddress -IPAddress $ip -Location "remote"
+}
+}
+}
+}
+
+$ComandoRemotoAzure = {
+Param(
+[string]$ComputerId,
+[string]$Location,
+[string[]]$IpAddressesToRemoveAdd
+)
+
+Connect-AzAccount -UseDeviceAuthentication
+
+$RgName = "rgtutivnet"
+$VmName = "VMAZUVXLAN$ComputerId"
+$SubscriptionName = Subname
+
+# Set Azure context (replace 'subscriptionId' with your subscription ID)
+Set-AzContext -subscription $SubscriptionName
+
+# Get VM and NIC information
+$vm = Get-AzVM -Name $VmName -ResourceGroupName $RgName
+$nic = Get-AzNetworkInterface -ResourceId $vm.NetworkProfile.NetworkInterfaces[1].Id
+
+foreach ($IpAddress in $IpAddressesToRemoveAdd) {
+$IpName = "ipconfig-$IpAddress"
+$existingIpConfig = $nic.IpConfigurations | Where-Object { $_.Name -eq $IpName }
+
+if ($Location -eq "local") {
+if (-not $existingIpConfig) {
+$vnet = Get-AzVirtualNetwork -Name $nic.IpConfigurations[0].Subnet.Id.Split("/")[-3] -ResourceGroupName $RgName
+$subnet = Get-AzVirtualNetworkSubnetConfig -Name $nic.IpConfigurations[0].Subnet.Id.Split("/")[-1] -VirtualNetwork $vnet
+
+$ipConfig = Add-AzNetworkInterfaceIpConfig -Name $IpName -NetworkInterface $nic -Subnet $subnet -PrivateIpAddress $IpAddress
+}
+}
+elseif ($Location -eq "remote") {
+if ($existingIpConfig) {
+$nic.IpConfigurations.Remove($existingIpConfig)
+}
+}
+}
+
+# Update NIC with the new IP configuration
+Set-AzNetworkInterface -NetworkInterface $nic
+
+# Display NIC IP configuration properties
+$nic.IpConfigurations | Format-Table Name, PrivateIpAddress, Primary
+}
+
+# Execute o comando em todas as máquinas remotas simultaneamente
+Invoke-Command -Session $sessoes -ScriptBlock $comandoRemoto -ArgumentList $ComputerId, $Location, $IpAddressesToRemoveAdd
+& $ComandoRemotoAzure -ComputerId $ComputerId -Location $Location -IpAddressesToRemoveAdd $IpAddressesToRemoveAdd
