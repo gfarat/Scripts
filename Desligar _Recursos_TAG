@@ -1,0 +1,53 @@
+
+
+
+param ([string]$Action,[String]$ValorApp,[String]$ValorAmbiente)
+
+###########################################
+# Início do script
+
+# Autenticação
+Disable-AzContextAutosave -Scope Process | Out-Null
+try
+{
+    "Fazendo Login no Azure..."
+     $AzureContext = (Connect-AzAccount -Identity -AccountId (Get-AutomationVariable -Name 'ManagedIdentityClientID')).context
+     $AzureContext = Set-AzContext -Subscription $AzureContext.Subscription -DefaultProfile $AzureContext     
+}
+catch {
+    Write-Error -Message $_.Exception
+    throw $_.Exception
+}
+
+function GetResourceInfo
+{
+    param([string]$InputResourceID)
+    $resourcedata = get-azresource -resourceid $InputResourceID
+    $outputobj = new-object psobject -property @{
+        Name = $resourcedata.name
+        ResourceID = $resourcedata.ResourceID
+        Type = $resourcedata.ResourceType
+    }
+    return $outputobj
+}
+
+$recursos = get-azresource | where {($_.Tags.app -eq $ValorApp) -and ($_.Tags.ambiente -eq $ValorAmbiente) -and ($_.Tags.DesabilitaDesligamentoAutomatico -ne "Sim")} | select id
+$ResourcesList = @()
+$ResourcesList = $recursos.Id
+
+$msg1 = "Tags selecionadas: app = " + $ValorApp + " - ambiente = " + $ValorAmbiente + " - Recursos escolhidos:"
+write-output $msg1
+$ResourcesList
+
+$FinalResourceList = @()
+foreach ($resource in $ResourcesList)
+{
+    $FinalResourceList += GetResourceInfo -InputResourceID $resource
+}
+
+$ResourcesByType = $FinalResourceList | group-object -property Type
+
+
+.\EncaminhaRecursosParaStartStop.ps1 -Action $Action -ResourcesByType $ResourcesByType -wait
+
+
