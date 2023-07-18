@@ -1,0 +1,20 @@
+# Specify the values for 'App' and 'Ambiente' tags
+$ValorApp = "Domain"
+$ValorAmbiente = "dv"
+
+# Specify the value for the tag "DesabilitaDesligamentoAutomatico"
+$ValorAtualizar = "Nao"
+
+# Get the resources based on 'App' and 'Ambiente' tags
+$resources = Get-AzResource | Where-Object { ($_.Tags.App -eq $ValorApp) -and ($_.Tags.Ambiente -eq $ValorAmbiente) }
+
+# Iterate through the resources
+foreach ($resource in $resources) {
+    $resourceId = $resource.ResourceId
+
+    # Update the value of the tag "DesabilitaDesligamentoAutomatico"
+    $resource.Tags["DesabilitaDesligamentoAutomatico"] = $ValorAtualizar
+
+    # Update the resource with the new tag value
+    $resource | Set-AzResource -Force
+}
