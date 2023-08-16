@@ -1,0 +1,1 @@
+az keyvault secret set --name secret-linux01 --vault-name kv-workshop-vale --file ~/key-vm-linux01.pem
