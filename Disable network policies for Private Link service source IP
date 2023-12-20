@@ -1,0 +1,11 @@
+$subnet = 'default'
+
+$net = @{
+    Name = 'myVNet'
+    ResourceGroupName = 'myResourceGroup'
+}
+$vnet = Get-AzVirtualNetwork @net
+
+($vnet | Select -ExpandProperty subnets | Where-Object {$_.Name -eq $subnet}).privateLinkServiceNetworkPolicies = "Disabled"
+
+$vnet | Set-AzVirtualNetwork
