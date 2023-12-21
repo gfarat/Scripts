@@ -1,0 +1,49 @@
+# Variáveis
+$tenantId = "27eda52d-06a5-4e9f-bd76-1a062e47aba0"
+$subscriptionId = "d52f9c4a-5468-47ec-9641-da4ef1916bb5"
+$privateCloudName = "AVS-SDDC-GabrielFarat"
+$resourceGroupName = "RG-AVS-GabrielFarat"
+$clusterName = "Cluster-1"
+$policyName = "SQL-Hybrid-Cluster-1"
+
+# Conectar à conta Azure
+Connect-AzAccount -Tenant $tenantId -Subscription $subscriptionId
+
+# Obter token de cabeçalho
+$token = (Get-AzAccessToken).Token
+
+# Configurar cabeçalhos para a solicitação
+$headers = @{
+    "accept" = "application/json, text/plain, */*"
+    "Authorization"="Bearer $token"
+    "Content-Type"="application/json"
+}
+
+# Obter informações do cluster e das VMs
+$cluster = Get-AzVMwareCluster -PrivateCloudName $privateCloudName -ResourceGroupName $resourceGroupName -name $clusterName -SubscriptionId $subscriptionId
+$vms = Get-AzVMwareVirtualMachine -ClusterName $clusterName -PrivateCloudName $privateCloudName -ResourceGroupName $resourceGroupName
+
+# Filtrar máquinas virtuais desejadas
+$vmMembers = $vms | Where-Object { $_.DisplayName -like "*BD*" } | ForEach-Object { $_.Id }
+
+# Criar o corpo da solicitação
+$body = @{
+    properties = @{
+        "type"= "VmHost"
+        "vmMembers"= $vmMembers
+        "hostMembers" = $cluster.host
+        "affinityType"= "Affinity"
+        "affinityStrength"= "Must"
+        "azureHybridBenefitType"= "SqlHost"     
+    }
+} | ConvertTo-Json
+
+# URL da API
+$url = "https://management.azure.com/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/Microsoft.AVS/privateClouds/$privateCloudName/clusters/$clusterName/placementPolicies/$($policyName)?api-version=2023-03-01"
+
+# Executar solicitação REST
+try {
+    $res = Invoke-RestMethod -Method PUT -Uri $url -Headers $headers -Body $body
+} catch {
+    $_.Exception.Message
+}
