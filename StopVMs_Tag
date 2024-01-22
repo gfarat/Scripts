@@ -1,0 +1,31 @@
+# Autenticar em todas as subscrições usando Managed Identity
+Connect-AzAccount -Identity
+$AzureContexts = Get-AzContext -ListAvailable
+
+foreach ($Context in $AzureContexts) {
+    # Trocar para o contexto atual
+    Set-AzContext -Context $Context
+
+    # Obter todos os grupos de recursos na subscrição
+    $ResourceGroups = Get-AzResourceGroup
+
+    foreach ($ResourceGroup in $ResourceGroups) {
+        # Obter todas as VMs no grupo de recursos
+        $Vms = Get-AzVM -ResourceGroupName $ResourceGroup.ResourceGroupName
+
+        # Filtrar VMs com as tags específicas
+        $VmsToProcess = $Vms | Where-Object { $_.Tags['stop_workday'] -eq '2200' -and $_.Tags['ApplicationName'] -eq 'Geral' }
+
+        try {
+            foreach ($VM in $VmsToProcess) {
+                Write-Output "Stopping VM: $($VM.Name)"
+                Stop-AzVM -ResourceGroupName $VM.ResourceGroupName -Name $VM.Name -Force
+                Write-Output "$($VM.Name): Deallocated Successfully."
+            }
+        }
+        catch {
+            Write-Error -Message $_.Exception
+            throw $_.Exception
+        }
+    }
+}
