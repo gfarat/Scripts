@@ -1,0 +1,15 @@
+{
+  "mode": "All",
+  "policyRule": {
+    "if": {
+      "not": {
+        "field": "Microsoft.Network/bastionHosts/virtualNetwork.id",
+        "contains": "vnet-sharedservices-eastus"
+      }
+    },
+    "then": {
+      "effect": "deny"
+    }
+  },
+  "parameters": {}
+}
